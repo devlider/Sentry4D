@@ -31,22 +31,20 @@ begin
           if not Assigned(SentryClient) then
             SentryClient := TSentryFactory.New.DSN(ADNS).ApiName(AAppName).Environment(AEnvironment).Release(ARelease).Build;
 
+          SentryClient.AddTag('handled', 'no');
           SentryClient.AddTag('transaction', Req.RawWebRequest.Method);
 
-          if not Req.RawWebRequest.URL.Trim.IsEmpty then
-            SentryClient.AddTag('url', Req.RawWebRequest.URL);
+          if not Req.PathInfo.Trim.IsEmpty then
+            SentryClient.AddTag('path.info', Req.PathInfo);
 
-          SentryClient.AddTag('handled', 'no');
+          if not Req.RawWebRequest.URL.Trim.IsEmpty then
+            SentryClient.AddTag('url', Req.Host);
 
 //          if not Req.Body.Trim.IsEmpty then
 //          begin
 //            vJson := StringToJSONObject(Req.Body);
 //            SentryClient.AddBreadcrumb('error', 'body', E.Message, 'error', vJson);
 //          end;
-
-          if not Req.PathInfo.Trim.IsEmpty then
-            SentryClient.AddTag('path.info', Req.PathInfo);
-
 
           SentryClient.CaptureException(E);
 
