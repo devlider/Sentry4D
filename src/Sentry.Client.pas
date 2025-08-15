@@ -29,6 +29,7 @@ type
 
     procedure AddTag(const Key: string; const Value: string);
     procedure AddBreadcrumb(const ABreadcrumbType, ACategory, AMessage, ALevel: string; AArgument: TJSONObject = nil);
+    procedure RemoveBreadcrumb;
     procedure CaptureException(const E: Exception);
 
     property Release: string read FRelease write FRelease;
@@ -95,6 +96,17 @@ begin
   FSentryHost := Copy(s, 1, pSlash - 1);
   FProjectID := Copy(s, pSlash + 1, High(Integer));
   FFullURL := Format('https://%s/api/%s/envelope/', [FSentryHost, FProjectID]);
+end;
+
+procedure TSentryClient.RemoveBreadcrumb;
+var
+  I: Integer;
+begin
+  if not Assigned(FBreadcrumbs) then
+    Exit;
+
+  for I := 0 to Pred(FBreadcrumbs.Count) do
+    FBreadcrumbs.Remove(I);
 end;
 
 procedure TSentryClient.AddTag(const Key, Value: string);
