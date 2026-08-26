@@ -25,213 +25,59 @@ function GetCurrentDateTime: string;
 
 implementation
 
-//uses
-//  {$IFDEF MSWINDOWS}
-//  Winapi.Windows, Winapi.PsAPI, System.Win.Registry, ActiveX, ComObj,
-//  {$ELSE}
-//  Sentry.SysInfoLinux,
-//  {$ENDIF}
-//  System.Classes, System.IOUtils, System.Variants;
+var
+  SysInfoService: ISysInfoService;
+
+function GetSysInfoService: ISysInfoService;
+begin
+  if not Assigned(SysInfoService) then
+    {$IFDEF MSWINDOWS}
+    SysInfoService := TSysInfoWindows.Create;
+    {$ELSE}
+    SysInfoService := TSysInfoLinux.Create;
+    {$ENDIF}
+  Result := SysInfoService;
+end;
 
 function GetCPUDescription: string;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetCPUDescription;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetCPUDescription;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetCPUDescription;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetProcessorCoreCount: Integer;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetProcessorCoreCount;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetProcessorCoreCount;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetProcessorCoreCount;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetProcessorFrequency: Double;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetProcessorFrequency;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetProcessorFrequency;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetProcessorFrequency;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetKernelVersion: string;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetKernelVersion;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetKernelVersion;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetKernelVersion;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetBootTime: string;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetBootTime;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetBootTime;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetBootTime;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetMemoryInfo(out Total, Free: UInt64): Boolean;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetMemoryInfo(Total, Free);
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetMemoryInfo(Total, Free);
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetMemoryInfo(Total, Free);
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetAppMemoryUsage: Int64;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetAppMemoryUsage;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetAppMemoryUsage;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetAppMemoryUsage;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function GetCurrentDateTime: string;
-{$IFDEF MSWINDOWS}
-var
-  vSysInfoWindows: TSysInfoWindows;
 begin
-  vSysInfoWindows := TSysInfoWindows.Create;
-  try
-    Result := vSysInfoWindows.GetCurrentDateTime;
-  finally
-    FreeAndNil(vSysInfoWindows);
-  end;
+  Result := GetSysInfoService.GetCurrentDateTime;
 end;
-{$ELSE}
-var
-  vSysInfoLinux: TSysInfoLinux;
-begin
-  vSysInfoLinux := TSysInfoLinux.Create;
-  try
-    Result := vSysInfoLinux.GetCurrentDateTime;
-  finally
-    FreeAndNil(vSysInfoLinux);
-  end;
-end;
-{$ENDIF}
 
 function BuildSystemContexts(AppStartTime: TDateTime): TJSONObject;
 var
@@ -279,7 +125,7 @@ begin
   runtimec := TJSONObject.Create;
   try
     runtimec.AddPair('runtime', 'Delphi');
-    runtimec.AddPair('version', '10.2.3');
+    runtimec.AddPair('version', Format('%.1f', [CompilerVersion]));
     runtimec.AddPair('name', 'Delphi');
     runtimec.AddPair('type', 'runtime');
   except

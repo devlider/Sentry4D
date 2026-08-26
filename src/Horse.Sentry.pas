@@ -23,6 +23,7 @@ implementation
 
 var
   SentryClient: TSentryClient;
+  SentryClientLock: TObject;
 
 function HorseSentry(const ADNS, AAppName, AEnvironment, ARelease: string;
   ABodyProcessor: TBodyProcessor = nil): THorseCallback;
@@ -43,12 +44,20 @@ begin
             Exit;
 
           if not Assigned(SentryClient) then
-            SentryClient := TSentryFactory.New
-                              .DSN(ADNS)
-                              .ApiName(AAppName)
-                              .Environment(AEnvironment)
-                              .Release(ARelease)
-                              .Build;
+          begin
+            TMonitor.Enter(SentryClientLock);
+            try
+              if not Assigned(SentryClient) then
+                SentryClient := TSentryFactory.New
+                                  .DSN(ADNS)
+                                  .ApiName(AAppName)
+                                  .Environment(AEnvironment)
+                                  .Release(ARelease)
+                                  .Build;
+            finally
+              TMonitor.Exit(SentryClientLock);
+            end;
+          end;
 
           SentryClient.AddTag('handled', 'no');
           SentryClient.AddTag('transaction', Req.RawWebRequest.Method);
@@ -84,7 +93,8 @@ begin
             end;
 
             try
-              SentryClient.CaptureException(E, ExtrairDocumentoEmitenteComRegex(Req.Body));
+              SentryClient.CaptureException(E, ExtrairDocumentoEmitenteComRegex(Req.Body),
+                ['{{ default }}', E.ClassName, Req.RawWebRequest.Method, Req.PathInfo, E.Message]);
             except
             end;
           finally
@@ -142,6 +152,13 @@ begin
 
   Result := Documento;
 end;
+
+initialization
+  SentryClientLock := TObject.Create;
+
+finalization
+  FreeAndNil(SentryClient);
+  FreeAndNil(SentryClientLock);
 
 end.
 

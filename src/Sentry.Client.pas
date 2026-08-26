@@ -5,32 +5,32 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  System.Net.HttpClient,
   System.Generics.Collections,
-  System.DateUtils;
+  System.DateUtils,
+  Sentry.Transport;
 
 type
   TSentryClient = class
   private
     FPublicKey, FSentryHost, FProjectID, FFullURL: string;
-    FHttpClient: THTTPClient;
+    FTransport: ISentryTransport;
     FAppName, FEnvironment, FRelease: string;
     FTags: TDictionary<string, string>;
     FBreadcrumbs: TJSONArray;
     FAppStartTime: TDateTime;
     procedure ParseDSN(const DSN: string);
     function BuildContexts: TJSONObject;
-    function BuildEventPayload(const EventID: string; const E: Exception; UserDoc: string): string;
+    function BuildEventPayload(const EventID: string; const E: Exception; UserDoc: string; const AFingerprint: TArray<string>): string;
     function BuildEnvelope(const EventID, Payload: string): string;
     function GeraUUID(ARemoveTraco: Boolean = False):string;
   public
-    constructor Create(const DSN, AppName, Environment: string);
+    constructor Create(const DSN, AppName, Environment: string; const ATransport: ISentryTransport = nil);
     destructor Destroy; override;
 
     procedure AddTag(const Key: string; const Value: string);
     procedure AddBreadcrumb(const ABreadcrumbType, ACategory, AMessage, ALevel: string; AArgument: TJSONObject = nil);
     procedure RemoveBreadcrumb;
-    procedure CaptureException(const E: Exception; AUserDoc: string);
+    procedure CaptureException(const E: Exception; AUserDoc: string; const AFingerprint: TArray<string> = nil);
 
     property Release: string read FRelease write FRelease;
   end;
@@ -49,13 +49,16 @@ begin
   Result := SecondsBetween(Now, EncodeDate(1970, 1, 1));
 end;
 
-constructor TSentryClient.Create(const DSN, AppName, Environment: string);
+constructor TSentryClient.Create(const DSN, AppName, Environment: string; const ATransport: ISentryTransport);
 begin
   inherited Create;
   FAppStartTime := Now;
   FAppName := AppName;
   FEnvironment := Environment;
-  FHttpClient := THTTPClient.Create;
+  if Assigned(ATransport) then
+    FTransport := ATransport
+  else
+    FTransport := THTTPSentryTransport.Create;
   FTags := TDictionary<string, string>.Create;
   FBreadcrumbs := TJSONArray.Create;
   ParseDSN(DSN);
@@ -63,7 +66,6 @@ end;
 
 destructor TSentryClient.Destroy;
 begin
-  FHttpClient.Free;
   FTags.Free;
   FBreadcrumbs.Free;
   inherited;
@@ -101,12 +103,16 @@ end;
 procedure TSentryClient.RemoveBreadcrumb;
 var
   I: Integer;
+  Item: TJSONValue;
 begin
   if not Assigned(FBreadcrumbs) then
     Exit;
 
-  for I := 0 to Pred(FBreadcrumbs.Count) do
-    FBreadcrumbs.Remove(I);
+  for I := Pred(FBreadcrumbs.Count) downto 0 do
+  begin
+    Item := FBreadcrumbs.Remove(I);
+    Item.Free;
+  end;
 end;
 
 procedure TSentryClient.AddTag(const Key, Value: string);
@@ -153,11 +159,11 @@ begin
   Result := BuildSystemContexts(FAppStartTime);
 end;
 
-function TSentryClient.BuildEventPayload(const EventID: string; const E: Exception; UserDoc: string): string;
+function TSentryClient.BuildEventPayload(const EventID: string; const E: Exception; UserDoc: string; const AFingerprint: TArray<string>): string;
 var
   Obj, Exo, Exs, TagsObj, ctxt, bread, user: TJSONObject;
-  Arr: TJSONArray;
-  k: string;
+  Arr, FingerprintArr: TJSONArray;
+  k, parte: string;
 begin
   Obj := TJSONObject.Create;
   try
@@ -177,6 +183,18 @@ begin
     Arr := TJSONArray.Create; Arr.AddElement(Exo);
     Exs := TJSONObject.Create; Exs.AddPair('values', Arr);
     Obj.AddPair('exception', Exs);
+
+    if Length(AFingerprint) > 0 then
+    begin
+      FingerprintArr := TJSONArray.Create;
+      for parte in AFingerprint do
+        if not parte.Trim.IsEmpty then
+          FingerprintArr.Add(parte);
+      if FingerprintArr.Count > 0 then
+        Obj.AddPair('fingerprint', FingerprintArr)
+      else
+        FingerprintArr.Free;
+    end;
 
     TagsObj := TJSONObject.Create;
     for k in FTags.Keys do
@@ -213,24 +231,15 @@ begin
   Result := hdr + #10 + itm + #10 + Payload;
 end;
 
-procedure TSentryClient.CaptureException(const E: Exception; AUserDoc: string);
+procedure TSentryClient.CaptureException(const E: Exception; AUserDoc: string; const AFingerprint: TArray<string>);
 var
   ID, Payload, Envelope, AuthH: string;
-  Req: TStringStream;
-  Resp: IHTTPResponse;
 begin
   ID := GeraUUID(True);
-  Payload := BuildEventPayload(ID, E, AUserDoc);
+  Payload := BuildEventPayload(ID, E, AUserDoc, AFingerprint);
   Envelope := BuildEnvelope(ID, Payload);
   AuthH := Format('Sentry sentry_key=%s,sentry_version=7,sentry_client=delphi/1.0', [FPublicKey]);
-  Req := TStringStream.Create(Envelope, TEncoding.UTF8);
-  try
-    FHttpClient.CustomHeaders['X-Sentry-Auth'] := AuthH;
-    FHttpClient.ContentType := 'application/x-sentry-envelope';
-    Resp := FHttpClient.Post(FFullURL, Req);
-  finally
-    Req.Free;
-  end;
+  FTransport.Send(FFullURL, AuthH, Envelope);
 end;
 
 end.
